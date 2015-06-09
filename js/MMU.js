@@ -25,6 +25,21 @@ MMU = {
   _eram: [],
   _zram: [],
 
+  reset: function() {
+    for (i = 0; i < 8192; i++) {
+      MMU._wram[i] = 0;
+      MMU._eram[i] = 0;
+    }
+
+    for (i = 0; i < 127; i++) {
+      MMU._zram[i] = 0;
+    },
+
+    MMU._inbios = 1;
+    MMU._ie = 0;
+    MMU._if = 0;
+  },
+
   load: function (file) {
     fileReader = new BinFileReader(file);
     MMU._rom = fileReader.readString(fileReader.getFileSize(), 0);
