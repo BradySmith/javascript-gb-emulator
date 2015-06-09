@@ -10,6 +10,28 @@ Z80 = {
     m: 0, t: 0
   }
 
+  reset: function () {
+    Z80._r.a = 0;
+    Z80._r.b = 0;
+    Z80._r.c = 0;
+    Z80._r.d = 0;
+    Z80._r.e = 0;
+    Z80._r.h = 0;
+    Z80._r.l = 0;
+    Z80._r.f = 0;
+
+    Z80._r.sp = 0;
+    Z80._r.pc = 0;
+    Z80._r.i = 0;
+    Z80._r.r = 0;
+
+    Z80._r.m = 0;
+    Z80._r.t = 0;
+
+    Z80._clock.m = 0;
+    Z80._clock.t = 0;
+  }
+
   _ops: {
     LDrr_bb: function() { 
       Z80._r.b = Z80._r.b; 
