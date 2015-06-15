@@ -51,77 +51,77 @@ MMU = {
       // BIOS (256b)/ROM0.
       case 0x0000:
         if (MMU._inbios) {
-          if (addr < 0x0100) {
-            return MMU._bios[addr];
-          }
-          else if (Z80._r.pc == 0x0100) {
-            MMU._inbios = 0;
-          }
+        if (addr < 0x0100) {
+          return MMU._bios[addr];
         }
-        
-        return MMU._rom[addr];
+        else if (Z80._r.pc == 0x0100) {
+          MMU._inbios = 0;
+        }
+      }
+
+      return MMU._rom[addr];
 
       // ROM 0.
       case 0x1000:
-      case 0x2000:
-      case 0x3000:
+        case 0x2000:
+        case 0x3000:
         return MMU._rom[addr];
-      
+
       // ROM 1 (unbanked) (16k).
       case 0x4000:
-      case 0x5000:
-      case 0x6000:
-      case 0x7000:
+        case 0x5000:
+        case 0x6000:
+        case 0x7000:
         return MMU._romp[addr];
 
       // Graphics: VRAM (8k).
       case 0x8000:
-      case 0x9000:
+        case 0x9000:
         return GPU._vram[addr & 0x1FFF];
 
       // External RAM (8k).
       case 0xA000:
-      case 0xB000:
-          return MMU._eram[addr & 0x1FFF];
+        case 0xB000:
+        return MMU._eram[addr & 0x1FFF];
 
       // Working RAM (8k).
       case 0xC000:
-      case 0xD000:
-          return MMU._eram[addr & 0x1FFF];
+        case 0xD000:
+        return MMU._eram[addr & 0x1FFF];
 
       // Working RAM shadow.
       case 0xE000
-        return MMU._wram[addr & 0x1FFF];
+      return MMU._wram[addr & 0x1FFF];
 
       // Working RAM shadow, I/O, Zero-page RAM.
       case 0xF000:
         switch (addr & 0x0F00) {
 
-          // Working RAM shadow
-          case 0x000: case 0x100: case 0x200: case 0x300:
+        // Working RAM shadow
+        case 0x000: case 0x100: case 0x200: case 0x300:
           case 0x400: case 0x500: case 0x600: case 0x700:
           case 0x800: case 0x900: case 0xA00: case 0xB00:
           case 0xC00: case 0xD00:
-            return MMU._wram[addr & 0x1FFF];
+          return MMU._wram[addr & 0x1FFF];
 
-          // Graphics: object attribute memory.
-          // OAM is 160 bytes, remaining bytes read as 0.
-          case 0xE00:
-            if (addr < 0xFEA0) {
-              return GPU._oam[addr & 0xFF];
-            } else {
-              return 0;
-            }
+        // Graphics: object attribute memory.
+        // OAM is 160 bytes, remaining bytes read as 0.
+        case 0xE00:
+          if (addr < 0xFEA0) {
+          return GPU._oam[addr & 0xFF];
+        } else {
+          return 0;
+        }
 
-          // Zero-page.
-          case 0xF00:
-            if (addr >= 0xFF80) {
-              return MMU._zram[addr & 0x7F];
-            } else {
-              // I/O control handling.
-              // TODO: Implement this.
-              return 0;
-            }
+        // Zero-page.
+        case 0xF00:
+          if (addr >= 0xFF80) {
+          return MMU._zram[addr & 0x7F];
+        } else {
+          // I/O control handling.
+          // TODO: Implement this.
+          return 0;
+        }
       }
     }
   },
@@ -130,4 +130,72 @@ MMU = {
   rw: function(addr) {
     return MMU.rb(addr) + (MMU.rb(addr+1) << 8);
   }
+
+  wb: function(addr,val) {
+    switch(addr&0xF000)
+    {
+      // ROM bank 0
+      case 0x0000:
+        if(MMU._inbios && addr<0x0100) return;
+      // fall through
+      case 0x1000:
+        case 0x2000:
+        case 0x3000:
+        break;
+
+      // ROM bank 1
+      case 0x4000: case 0x5000: case 0x6000: case 0x7000:
+        break;
+
+      // VRAM
+      case 0x8000: case 0x9000:
+        GPU._vram[addr&0x1FFF] = val;
+      GPU.updatetile(addr&0x1FFF, val);
+      break;
+
+      // External RAM
+      case 0xA000: case 0xB000:
+        MMU._eram[addr&0x1FFF] = val;
+      break;
+
+      // Work RAM and echo
+      case 0xC000: case 0xD000: case 0xE000:
+        MMU._wram[addr&0x1FFF] = val;
+      break;
+
+      // Everything else
+      case 0xF000:
+        switch(addr&0x0F00)
+      {
+        // Echo RAM
+        case 0x000: case 0x100: case 0x200: case 0x300:
+          case 0x400: case 0x500: case 0x600: case 0x700:
+          case 0x800: case 0x900: case 0xA00: case 0xB00:
+          case 0xC00: case 0xD00:
+          MMU._wram[addr&0x1FFF] = val;
+        break;
+
+        // OAM
+        case 0xE00:
+          if((addr&0xFF)<0xA0) GPU._oam[addr&0xFF] = val;
+        GPU.updateoam(addr,val);
+        break;
+
+        // Zeropage RAM, I/O
+        case 0xF00:
+          if(addr > 0xFF7F) { 
+          MMU._zram[addr&0x7F]=val; 
+        } else switch(addr&0xF0)
+          {
+          }
+      }
+      break;
+    }
+  },
+
+  ww: function(addr,val) { 
+    MMU.wb(addr,val&255);
+    MMU.wb(addr+1,val>>8); 
+  }
+
 };
